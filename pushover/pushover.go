@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"powermon/logging"
+	"time"
 )
 
 // PushoverURL is the url of the pushover api
@@ -26,6 +28,8 @@ type Notification struct {
 	Message   string `json:"message"`
 	APIToken  string `json:"token"`
 	UserToken string `json:"user"`
+	Priority  int    `json:"priority"`
+	Timestamp int64  `json:"timestamp"`
 }
 
 // Default is the default notifier to use, but must be initialized first
@@ -48,37 +52,54 @@ func (notifier *NotifierSettings) SendNotification(message string) error {
 			Message:   message,
 			UserToken: user,
 			APIToken:  notifier.APIToken,
+			Timestamp: time.Now().Unix(),
 		}
 
-		err := notification.send()
-		if err != nil {
-			return err
-		}
+		go notification.send()
 	}
 
 	return nil
 }
 
-func (notification *Notification) send() error {
+func (notification *Notification) send() {
 	buff := &bytes.Buffer{}
 	enc := json.NewEncoder(buff)
 	err := enc.Encode(notification)
 	if err != nil {
-		return err
+		return
 	}
 
-	resp, err := http.Post(PushoverURL, ContentType, buff)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
+	count := 0
+	// If any error isn't nil, it loops again and tries to send again. When the request succeeds, it will stop the loop
+	for {
+		// Quit trying to send after 10 tries.
+		if count >= 10 {
+			logging.Logger.Error("Failed to send Pushover notification 10 times, not trying again.")
+			break
 		}
-		return fmt.Errorf("Status code from pushover was not 200. \nStatus code: %d.\nBody: %s", resp.StatusCode, body)
-	}
 
-	return nil
+		// If trying again, wait 10 seconds
+		if count > 0 {
+			time.Sleep(time.Second * 10)
+		}
+
+		resp, err := http.Post(PushoverURL, ContentType, buff)
+		count++
+		if err != nil {
+			logging.Logger.Error("Failed to send Pushover notification: ", err)
+			continue
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				logging.Logger.Error("Failed to send Pushover notification: ", err)
+			}
+
+			logging.Logger.Error(fmt.Sprintf("Failed to send Pushover notification: Non 200 status code: %d, body: %s", resp.StatusCode, body))
+			continue
+		}
+
+		break
+	}
 }

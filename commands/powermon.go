@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"powermon/logging"
 	"powermon/pushover"
 
 	"github.com/sirupsen/logrus"
@@ -32,12 +33,14 @@ type PowermonCommand struct {
 // Powermon holds the global options, accessible in other files
 var Powermon PowermonCommand
 
-// Logger used for all logging. Initialized by calling command.Init() in all the command files that need to
+// Logger makes it so we don't have to import logging in every command file...
 var Logger *logrus.Logger
 
 // Init should be the first thing that any command calls, to initialize the global application options
 func (command *PowermonCommand) Init() error {
-	Logger = logrus.New()
+	logging.Logger = logrus.New()
+	Logger = logging.Logger
+
 	// Default output is stdout
 	Logger.Out = os.Stdout
 	// Use the basic text formatter
