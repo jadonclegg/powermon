@@ -17,6 +17,7 @@ type ClientCommand struct {
 	Port     int    `short:"p" long:"port" default:"10101" description:"Port to listen on, or connect to. Default is 10101"`
 	Timeout  int    `short:"t" long:"timeout" default:"60" description:"Shuts down the computer or runs custom timeout script X seconds after failing to ping the server. Default is 60"`
 	Interval int    `short:"i" long:"interval" default:"60" description:"Check if server is up every X seconds. Default is 60."`
+	Secure   bool   `short:"s" long:"https" description:"Use https to connect to the server. For use througha reverse proxy such as nginx, with a valid ssl certificate."`
 
 	stopped bool
 }
@@ -116,8 +117,13 @@ func (command *ClientCommand) onTimeout() {
 }
 
 func (command *ClientCommand) pinger(pchan chan bool) {
+	protocol := "http"
+	if command.Secure {
+		protocol = "https"
+	}
+
 	// Build the url using the IP and port
-	url := fmt.Sprintf("http://%s:%d/status", command.Address, command.Port)
+	url := fmt.Sprintf("%s://%s:%d/status", protocol, command.Address, command.Port)
 	httpClient := http.Client{
 		Timeout: 2 * time.Second,
 	}

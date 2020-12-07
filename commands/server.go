@@ -61,6 +61,9 @@ func (command *ServerCommand) Execute(args []string) error {
 	SendNotification(fmt.Sprintf("Server started, listening on port %d", command.Port))
 
 	err = http.ListenAndServe(fmt.Sprintf(":%d", command.Port), nil)
+	if err != nil {
+		SendNotification(fmt.Sprintf("Error starting powermon server: %s", err))
+	}
 
 	return err
 }
@@ -164,9 +167,9 @@ func sendWolpackets(macs map[string]bool, verify bool) {
 		case clientData := <-verifyChan:
 			if verifiedCount < len(macs) {
 				for _, mac := range clientData.MACS {
-					_, ok := macs[mac]
+					online, ok := macs[mac]
 					// If the mac address isn't in the dictionary, ignore it
-					if ok {
+					if ok && !online {
 						macs[mac] = true
 						verifiedCount++
 						Logger.Info(fmt.Sprintf("Received verification from [%s] mac %s", clientData.NickName, mac))
