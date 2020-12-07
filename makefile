@@ -28,3 +28,6 @@ install: powermon
 
 uninstall:
 	if [ -f /usr/bin/powermon ]; then rm /usr/bin/powermon; fi
+
+powermon.exe: $(all)
+	env GOOS=windows go build

@@ -111,6 +111,8 @@ func (command *ClientCommand) onTimeout() {
 
 	SendNotification(fmt.Sprintf("[%s] - Timeout reached, shutting down.", clientData.NickName))
 
+	// Wait for the notification to send.
+	time.Sleep(5 * time.Second)
 	err := power.Shutdown(command.Sudo)
 	if err != nil {
 		Logger.Error("Error executing command: ", err)

@@ -53,6 +53,7 @@ func (notifier *NotifierSettings) SendNotification(message string) error {
 			UserToken: user,
 			APIToken:  notifier.APIToken,
 			Timestamp: time.Now().Unix(),
+			Priority:  1,
 		}
 
 		go notification.send()
