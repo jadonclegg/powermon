@@ -62,8 +62,16 @@ Just run `go build` after cloning the project.
 # Make commands
 `make` - runs the default command `make powermon` - basically an alias to `go build`
 
-`make arm` - builds for the arm (32bit) architecture, output file is powermon-arm (Raspberry Pi 0, 1? not verified)
+`make arm`** - builds for the arm (32bit) architecture, output file is powermon-arm (Raspberry Pi 0, 1? not verified)
 
-`make arm64` - builds for the arm (64bit) architecture, output file is powermon-arm64 (Verified to work on my raspberry pi 4 running ubuntu server 20.04)
+`make arm64`** - builds for the arm (64bit) architecture, output file is powermon-arm64 (Verified to work on my raspberry pi 4 running ubuntu server 20.04)
 
-You can also just install go on your raspberry pi and run `go build`.
+`make instaill` - run with sudo. Builds and installs to /usr/bin/powermon
+
+`make uninstall` - run with sudo. Deletes file at /usr/bin/powermon
+
+`make clean` - Delete all built executables (powermon, powermon-arm, powermon-arm64)
+
+`make all` - build all 3 versions at the same time.
+
+** The arm builds are because I didn't want to install all the golang utilities on my raspberry pi. I'm compiling on my main computer, and just copying over the executable. You could just install go on your raspberry pi and run `go build`.
