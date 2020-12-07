@@ -43,7 +43,7 @@ The mac command just lists the mac addresses and their interface names, so you c
 
 `--verify` Keep sending WOL packets to MAC addresses specified with `-w [--wake]` or `--wakelist` until they have sent a ping to the server.
 
-** Make sure you enable Wake-On-Lan in the BIOS settings of each computer you want to wake first. If you don't, it won't turn on. Some motherboards don't support WOL, and some list it as 'allow pcie wakeup events' or something similair. Google your specific computer / motherboard if you want to turn it on.
+** Make sure you enable Wake-On-Lan in the BIOS settings of each computer you want to wake first. If you don't, it won't turn on. Some motherboards don't support WOL, and some list it as 'allow pcie wakeup events' or something similar. Google your specific computer / motherboard if you want to turn it on.
 
 ### powermon client
 `powermon [Global Options] client [Client Options]`
