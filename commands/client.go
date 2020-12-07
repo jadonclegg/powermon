@@ -13,7 +13,7 @@ import (
 
 // ClientCommand holds command line options for the powermon client command
 type ClientCommand struct {
-	IP       string `short:"a" long:"host" required:"true" description:"Address of server. Can be an IP or a hostname"`
+	Address  string `short:"a" long:"address" required:"true" description:"Address of server. Can be an IP or a hostname"`
 	Port     int    `short:"p" long:"port" default:"10101" description:"Port to listen on, or connect to. Default is 10101"`
 	Timeout  int    `short:"t" long:"timeout" default:"60" description:"Shuts down the computer or runs custom timeout script X seconds after failing to ping the server. Default is 60"`
 	Interval int    `short:"i" long:"interval" default:"60" description:"Check if server is up every X seconds. Default is 60."`
@@ -83,16 +83,16 @@ func (command *ClientCommand) Execute(args []string) error {
 
 func (command *ClientCommand) validateOptions() error {
 	// Parse the IP, make sure it's valid.
-	ip := net.ParseIP(command.IP)
+	ip := net.ParseIP(command.Address)
 	if ip == nil {
 		// Check if it's a valid DNS address...
-		ips, err := net.LookupIP(command.IP)
+		ips, err := net.LookupIP(command.Address)
 		if err != nil || len(ips) == 0 {
 			return errors.New("error: specified host doesn't exist")
 		}
 	} else {
 		// Store the valid IP back in the command struct.
-		command.IP = ip.String()
+		command.Address = ip.String()
 	}
 
 	// Make sure the port is valid
@@ -118,7 +118,7 @@ func (command *ClientCommand) onTimeout() {
 
 func (command *ClientCommand) pinger(pchan chan bool) {
 	// Build the url using the IP and port
-	url := fmt.Sprintf("http://%s:%d/status", command.IP, command.Port)
+	url := fmt.Sprintf("http://%s:%d/status", command.Address, command.Port)
 	httpClient := http.Client{
 		Timeout: 2 * time.Second,
 	}
