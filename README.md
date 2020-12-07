@@ -23,6 +23,8 @@ These options are ignored for the `powermon mac` command.
 
 `-u [--user-token]` - specifies the user token to send Pushover notifications to. (can be specified more than once, i.e. `-u <token> -u <second token>` etc.)
 
+[Pushover](https://pushover.net/) is a utility for sending Push notifications to your devices. You can register an app to get an app token, and a user token, which you can provide to send yourself push notifications.
+
 ## Commands
 
 ### powermon mac
