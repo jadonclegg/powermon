@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os/exec"
+	"powermon/power"
 	"time"
 )
 
@@ -107,10 +107,9 @@ func (command *ClientCommand) onTimeout() {
 	command.stopped = true
 	Logger.Warn("Timeout reached, shutting down.")
 
-	SendNotification("Timeout reached, shutting down.")
+	SendNotification(fmt.Sprintf("[%s] - Timeout reached, shutting down.", clientData.NickName))
 
-	cmd := exec.Command("shutdown", "now")
-	err := cmd.Run()
+	err := power.Shutdown()
 	if err != nil {
 		Logger.Error("Error executing command: ", err)
 	}
