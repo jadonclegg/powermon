@@ -17,3 +17,14 @@ arm64: powermon-arm64
 
 .PHONY: all
 all: arm arm64 powermon
+
+clean:
+	if [ -f powermon-arm ]; then rm powermon-arm; fi
+	if [ -f powermon-arm64 ]; then rm powermon-arm64; fi
+	if [ -f powermon ]; then rm powermon; fi
+
+install: powermon
+	cp powermon /usr/bin
+
+uninstall:
+	if [ -f /usr/bin/powermon ]; then rm /usr/bin/powermon; fi
