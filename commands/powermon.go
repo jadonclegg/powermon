@@ -10,14 +10,18 @@ import (
 )
 
 // PowermonCommand holds the settings for the base command Powermon
+// These are basically global options, used for both the server and client commands
 type PowermonCommand struct {
+	// Available commands in powermon
 	Client ClientCommand `command:"client" description:"Client mode."`
 	Server ServerCommand `command:"server" description:"Server mode."`
 	MAC    MACCommand    `command:"mac" description:"List MAC addresses."`
 
+	// Global options
 	Verbose bool   `short:"v" long:"verbose" description:"Verbose output"`
 	Log     string `short:"l" long:"logfile" description:"Log file"`
 
+	// Pushover config
 	PushoverToken string   `short:"k" long:"pushover-token" group:"Pushover" description:"API token to use for pushover notifications."`
 	UserTokens    []string `short:"u" long:"user-token" group:"Pushover" description:"User token to send notification to."`
 	NickName      string   `short:"n" long:"nickname" group:"Pushover" description:"Nickname in pushover notificatinos."`
@@ -25,24 +29,28 @@ type PowermonCommand struct {
 	pushoverEnabled bool
 }
 
-// Powermon holds the global options
+// Powermon holds the global options, accessible in other files
 var Powermon PowermonCommand
 
-// Logger used for all logging
+// Logger used for all logging. Initialized by calling command.Init() in all the command files that need to
 var Logger *logrus.Logger
 
-// Init runs stuff needed for all commands, like initializing logging
+// Init should be the first thing that any command calls, to initialize the global application options
 func (command *PowermonCommand) Init() error {
 	Logger = logrus.New()
+	// Default output is stdout
 	Logger.Out = os.Stdout
+	// Use the basic text formatter
 	Logger.SetFormatter(&logrus.TextFormatter{})
 
+	// If the verbose flag is enabled, show info logs
 	if command.Verbose {
 		Logger.Level = logrus.InfoLevel
 	} else {
 		Logger.Level = logrus.WarnLevel
 	}
 
+	// If the log file is specified, open or create the file and set it as the output for Logger
 	if command.Log != "" {
 		file, err := os.OpenFile(command.Log, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
 		if err != nil {
@@ -52,6 +60,7 @@ func (command *PowermonCommand) Init() error {
 		Logger.Out = file
 	}
 
+	// If the pushover token or user token options are present, check them for validity and set up the Default notifier in pushover/pushover.go
 	if command.PushoverToken != "" || len(command.UserTokens) > 0 {
 		if err := command.initializePushover(); err != nil {
 			return err
@@ -71,18 +80,21 @@ func (command *PowermonCommand) initializePushover() error {
 		return errors.New("Must specify one or more user tokens to send notifications to using -u [--user-token] flag")
 	}
 
+	// Todo: Implement the pushover validation API call to check if the user token / api token is valid before continuing
+
 	pushover.Initialize(command.PushoverToken, command.UserTokens)
 
 	return nil
 }
 
-// SendNotification wraps the pushover crap so the call can be one line. Only sends if enabled
+// SendNotification wraps the pushover crap so the call can be one line in the other command files. Only sends if the pushover options are passed in and valid
 func SendNotification(message string) error {
 	if Powermon.pushoverEnabled {
 		if Powermon.NickName != "" {
 			message = fmt.Sprintf("%s: %s", Powermon.NickName, message)
 		}
 
+		// Use the Default notifier to send messages.
 		err := pushover.Default.SendNotification(message)
 		if err != nil {
 			Logger.Error("Pushover notification failed: ", err)

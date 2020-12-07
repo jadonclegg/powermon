@@ -1,11 +1,12 @@
 package commands
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
-	"net/url"
 	"os/exec"
 	"time"
 )
@@ -16,10 +17,17 @@ type ClientCommand struct {
 	Port     int    `short:"p" long:"port" default:"10101" description:"Port to listen on, or connect to. Default is 10101"`
 	Timeout  int    `short:"t" long:"timeout" default:"60" description:"Shuts down the computer or runs custom timeout script X seconds after failing to ping the server. Default is 60"`
 	Interval int    `short:"i" long:"interval" default:"60" description:"Check if server is up every X seconds. Default is 60."`
-	Verify   bool   `long:"verify" description:"Tells the server that this host is back online, so the server will stop sending WOL packets. Use with the verify option enabled on the server."`
 
 	stopped bool
 }
+
+// ClientInfo contains basic information about the client, sent with every ping
+type ClientInfo struct {
+	MACS     []string
+	NickName string
+}
+
+var clientData ClientInfo
 
 // Execute runs the command
 func (command *ClientCommand) Execute(args []string) error {
@@ -28,35 +36,18 @@ func (command *ClientCommand) Execute(args []string) error {
 		return err
 	}
 
-	command.stopped = false
-
-	// Parse the IP, make sure it's valid.
-	ip := net.ParseIP(command.IP)
-	if ip == nil {
-		// Check if it's a valid DNS address...
-		ips, err := net.LookupIP(command.IP)
-		if err != nil || len(ips) == 0 {
-			return errors.New("error: specified host doesn't exist")
-		}
-	} else {
-		// Store the valid IP back in the command struct.
-		command.IP = ip.String()
+	err = command.validateOptions()
+	if err != nil {
+		return err
 	}
 
-	// Make sure the port is valid
-	if command.Port < 1 || command.Port > 65535 {
-		return errors.New("error: invaid port")
-	}
-
-	if command.Verify {
-		go command.sendVerification()
-	}
+	command.loadClientInfo()
 
 	// Make a channel to receive ping updates, and start the pinger
 	pingChan := make(chan bool)
 	go command.pinger(pingChan)
 
-	// Make a ticker with the timeout as the duration
+	// Make a timer with the timeout as the duration
 	timeout := time.Duration(command.Timeout) * time.Second
 	timer := time.NewTimer(timeout)
 
@@ -90,6 +81,28 @@ func (command *ClientCommand) Execute(args []string) error {
 	}
 }
 
+func (command *ClientCommand) validateOptions() error {
+	// Parse the IP, make sure it's valid.
+	ip := net.ParseIP(command.IP)
+	if ip == nil {
+		// Check if it's a valid DNS address...
+		ips, err := net.LookupIP(command.IP)
+		if err != nil || len(ips) == 0 {
+			return errors.New("error: specified host doesn't exist")
+		}
+	} else {
+		// Store the valid IP back in the command struct.
+		command.IP = ip.String()
+	}
+
+	// Make sure the port is valid
+	if command.Port < 1 || command.Port > 65535 {
+		return errors.New("error: invaid port")
+	}
+
+	return nil
+}
+
 func (command *ClientCommand) onTimeout() {
 	command.stopped = true
 	Logger.Warn("Timeout reached, shutting down.")
@@ -106,7 +119,7 @@ func (command *ClientCommand) onTimeout() {
 func (command *ClientCommand) pinger(pchan chan bool) {
 	// Build the url using the IP and port
 	url := fmt.Sprintf("http://%s:%d/status", command.IP, command.Port)
-	client := http.Client{
+	httpClient := http.Client{
 		Timeout: 2 * time.Second,
 	}
 
@@ -117,7 +130,7 @@ func (command *ClientCommand) pinger(pchan chan bool) {
 		}
 
 		// Run the the ping, catch errors
-		err := ping(url, client)
+		err := ping(url, httpClient)
 		if err != nil {
 			// If there's an error, print it to the console / log, and sleep for 3 seconds. Then re-run the loop.
 			// Basically, if there's an error, we shorten the timeout to 3 seconds and keep trying to get a succesful ping until we do,
@@ -135,9 +148,16 @@ func (command *ClientCommand) pinger(pchan chan bool) {
 	}
 }
 
-func ping(url string, client http.Client) error {
+func ping(url string, httpClient http.Client) error {
+	buf := &bytes.Buffer{}
+	enc := json.NewEncoder(buf)
+	err := enc.Encode(clientData)
+	if err != nil {
+		return err
+	}
+
 	// Try to "ping" the url. If there's an error, or the status code isn't 200, return an error.
-	resp, err := client.Get(url)
+	resp, err := httpClient.Post(url, "application/json", buf)
 	if err != nil {
 		return err
 	}
@@ -149,13 +169,8 @@ func ping(url string, client http.Client) error {
 	return nil
 }
 
-func (command *ClientCommand) sendVerification() {
-	httpClient := http.Client{
-		Timeout: 3 * time.Second,
-	}
-
-	hostURL := fmt.Sprintf("http://%s:%d/verify", command.IP, command.Port)
-	vals := url.Values{}
+func (command *ClientCommand) loadClientInfo() {
+	clientData.NickName = Powermon.NickName
 
 	interfaces, err := net.Interfaces()
 	if err != nil {
@@ -165,22 +180,7 @@ func (command *ClientCommand) sendVerification() {
 
 	for _, i := range interfaces {
 		if i.HardwareAddr != nil {
-			vals.Add("mac", i.HardwareAddr.String())
-		}
-	}
-
-	for {
-		resp, err := httpClient.PostForm(hostURL, vals)
-		if err != nil {
-			Logger.Error("Failed to send verification to server: ", err)
-			Logger.Info("Waiting for 15 seconds before trying to verify again.")
-			time.Sleep(time.Second * 15)
-			continue
-		}
-
-		if resp.StatusCode == http.StatusOK {
-			Logger.Info("Verification with server succeeded.")
-			break
+			clientData.MACS = append(clientData.MACS, i.HardwareAddr.String())
 		}
 	}
 }
