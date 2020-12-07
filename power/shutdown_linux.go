@@ -5,7 +5,13 @@ import (
 )
 
 // Shutdown shuts down the computer...
-func Shutdown() error {
-	cmd := exec.Command("shutdown", "now")
+func Shutdown(sudo bool) error {
+	var cmd *exec.Cmd
+	if sudo {
+		cmd = exec.Command("sudo", "shutdown", "now")
+	} else {
+		cmd = exec.Command("shutdown", "now")
+	}
+
 	return cmd.Run()
 }

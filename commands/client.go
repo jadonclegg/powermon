@@ -18,6 +18,7 @@ type ClientCommand struct {
 	Timeout  int    `short:"t" long:"timeout" default:"60" description:"Shuts down the computer or runs custom timeout script X seconds after failing to ping the server. Default is 60"`
 	Interval int    `short:"i" long:"interval" default:"60" description:"Check if server is up every X seconds. Default is 60."`
 	Secure   bool   `short:"s" long:"https" description:"Use https to connect to the server. For use througha reverse proxy such as nginx, with a valid ssl certificate."`
+	Sudo     bool   `long:"sudo" description:"Execute 'sudo shutdown now' instead of 'shutdown now'."`
 
 	stopped bool
 }
@@ -110,7 +111,7 @@ func (command *ClientCommand) onTimeout() {
 
 	SendNotification(fmt.Sprintf("[%s] - Timeout reached, shutting down.", clientData.NickName))
 
-	err := power.Shutdown()
+	err := power.Shutdown(command.Sudo)
 	if err != nil {
 		Logger.Error("Error executing command: ", err)
 	}
